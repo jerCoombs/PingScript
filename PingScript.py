@@ -9,10 +9,10 @@ from sys import argv, exit
 
 
 def page_refresh():
-    """Prints 'banner' with contact info at top of the terminal window."""
+    """Prints 'banner' with support info at top of the terminal window."""
     system('cls')  # Clears terminal window.
-    print('This network testing script was developed by End-to-End Service Analysis')
-    print('For support, please contact Jeremy.Coombs@team.telstra.com\n')
+    print('This network testing script was developed by Telstra Operations team End-to-End Service Analysis')
+    print('For contact/support, please visit github.com/jerCoombs/PingScript\n')
 
 
 def reset_session(runtime):
@@ -31,20 +31,20 @@ def host_check(hostname):
         if len(line) > 4 and str(line[4])[:4] == 'time':  # If this appears in string, ping was successful.
             checked.append(line[4])  # Add to list for counting.
     if len(checked) > 0:  # At least 1 positive response saved in list(checked).
-        return hostname
+        return hostname  # Return hostname to append to list(hosts)
     else:  # No positive responses in the test. Host is not responding.
         print('"{}" is not responding.'.format(hostname))
 
 
 def test(hostname):
-    """Establishes time to run tests and performs main testing loop."""
+    """Performs main testing loop."""
     filename = hostname + '.log'
-    now = datetime.now()
+    now = datetime.now()  # Save time for timestamp.
     with open(filename, 'a+') as file:
-        file.write('\n' + now.strftime("%H:%M:%S, %d/%m/%Y") + '\n')
+        file.write('\n' + now.strftime("%H:%M:%S, %d/%m/%Y") + '\n')  # Write timestamp to file.
     with open(filename, 'a') as file:
-        Popen(['ping', '-n', '10', hostname], stdout=file).wait()
-    sleep(3)
+        Popen(['ping', '-n', '10', hostname], stdout=file).wait()  # Write result of pings to file.
+    sleep(2)  # Brief pause before restarting loop.
 
 
 def graph(hostname):
@@ -145,7 +145,7 @@ def package(hosts):
     """After tests are complete, packages all relevant files together into subdirectory
     and creates a .zip archive of that directory.
     """
-    for hostname in hosts:
+    for hostname in hosts:  # Start by creating graph of all tested hosts.
         graph(hostname)
     computer_name = Popen(['hostname'], stdout=PIPE)  # Discover hostname of PC to name new directory.
     for line in computer_name.stdout:
@@ -163,8 +163,8 @@ def package(hosts):
                 zf.write(path.join(root, file))  # Write new directory to .zip file.
     system('move {} {}'.format(file_name, dir_name))  # Move .zip file into new directory.
     page_refresh()
-    print('Tests have completed successfully.\nScript will exit in 5 seconds.')
-    sleep(5)
+    print('Tests have completed successfully.\nScript will exit shortly.')
+    sleep(3)
     page_refresh()
     exit()  # Tests are complete. Quit program.
 
@@ -172,7 +172,7 @@ def package(hosts):
 def one(runtime, hostname):
     """Perform ping test on single specified host"""
     page_refresh()
-    print('Testing {}\n'.format(hostname))
+    print('Testing {}\n'.format(hostname))  # Display which host is being tested.
     print('Writing information about your system into "sysinfo.txt"...')
     with open('sysinfo.txt', 'w+') as file:  # Write system/test information to a .txt file using Windows commands:
         Popen(['tracert', hostname], stdout=file).wait()
@@ -180,9 +180,9 @@ def one(runtime, hostname):
         Popen(['ipconfig', '/all'], stdout=file).wait()
     print('Done!')
     now = datetime.now()
-    future = now + timedelta(minutes=runtime)
-    while now < future:
-        now = datetime.now()
+    future = now + timedelta(minutes=runtime)  # Establish time to stop performing test.
+    while now < future:  # Keep testing until time is up.
+        now = datetime.now()  # Updates current time for each iteration.
         test(hostname)  # Run test() on host.
     package(hostname)  # Package all relevant files together and exit program.
 
@@ -191,7 +191,7 @@ def two(runtime, hosts):
     """Performs ping test on multiple unique hosts, specified in 'hosts' list."""
     page_refresh()
     print('This script will now test the following hosts:')
-    for host in hosts:
+    for host in hosts:  # Display which hosts are being tested.
         print(host)
     print('\nWriting information about your system into "sysinfo.txt"...')
     with open('sysinfo.txt', 'w+') as file:  # Write system/test information to a .txt file using Windows commands:
@@ -203,11 +203,11 @@ def two(runtime, hosts):
         with open('sysinfo.txt', 'a+') as file:
             Popen(['tracert', host], stdout=file).wait()
     now = datetime.now()
-    future = now + timedelta(minutes=runtime)
-    while now < future:
-        now = datetime.now()
-        with Pool(len(hosts)) as tester:
-            tester.map(test, hosts)  # Perform test() on host.
+    future = now + timedelta(minutes=runtime)  # Establish time to stop performing test.
+    while now < future:  # Keep testing until time is up.
+        now = datetime.now()  # Updates current time for each iteration.
+        with Pool(len(hosts)) as tester:  # Create multiple threads to test hosts simultaneously.
+            tester.map(test, hosts)  # Perform test() on all devices in list(hosts)
     package(hosts)  # Package all relevant files together and exit program.
 
 
@@ -217,18 +217,17 @@ def three(runtime, hostname):
     print('Testing each device between this PC and {}'.format(hostname))
     print('Discovering hosts...')
     trace = Popen(['tracert', '-d', hostname], stdout=PIPE)  # Performs traceroute (IP addresses only) to hostname.
-    hosts_raw = []
+    hosts, hosts_raw = [], []  # Create host lists for pre and post check.
     for line in trace.stdout:  # Reads output of above traceroute.
         if str(line)[34:-6] != '':  # If line is not empty.
             hosts_raw.append(str(line)[34:-6])  # Append hostname part of line to 'hosts' list.
     del hosts_raw[0]  # Remove first line of traceroute from 'hosts' list.
-    hosts = []
     print('\nDiscovered devices:')
-    with Pool(len(hosts_raw)) as checker:
-        checked = checker.map(host_check, hosts_raw)
+    with Pool(len(hosts_raw)) as checker:  # Create multiple threads to check hosts simultaneously.
+        checked = checker.map(host_check, hosts_raw)  # Check all hosts in list(hosts_raw)
         for i in list(checked):
-            if i is not None:
-                print(i)
+            if i is not None:  # Add all responsive hosts to list(hosts)
+                print(i)  # Display which hosts are being tested.
                 hosts.append(str(i))
     print('Done!')
     print('\nWriting information about your system into "sysinfo.txt"...')
@@ -239,12 +238,12 @@ def three(runtime, hostname):
         Popen(['ipconfig', '/all'], stdout=file).wait()  # Network card information.
     print('Done!')
     now = datetime.now()
-    future = now + timedelta(minutes=runtime)
-    print('Pinging hosts until {}')
-    while now < future:
-        now = datetime.now()
-        with Pool(len(hosts)) as tester:
-            tester.map(test, hosts)
+    future = now + timedelta(minutes=runtime)  # Establish time to stop performing test.
+    print('Running tests until {}'.format(future.strftime("%H:%M, %d/%m")))
+    while now < future:  # Keep testing until time is up.
+        now = datetime.now()  # Updates current time for each iteration.
+        with Pool(len(hosts)) as tester:  # Create multiple threads to test hosts simultaneously.
+            tester.map(test, hosts)  # Perform test() on all devices in list(hosts)
     package(hosts)  # Package all relevant files together and exit program.
 
 
@@ -256,7 +255,7 @@ def menu(runtime):
     print('2) Ping a number of hosts for the default time.')  # Run two()
     print('3) Ping each host in a path for the default time.')  # Run three()
     print('4) Change the default time (currently: {} minutes).'.format(runtime))  # Changes 'runtime'
-    print('5) Create graph of an existing file.')
+    print('5) Create graph of an existing file.')  # Run graph() on specified hostname.
     print('0) Exit')  # Quit program.
     selection = input('\nPlease select one of the options above: ')  # User chooses an option and runs function.
     if selection == '1':
@@ -267,23 +266,21 @@ def menu(runtime):
             print('{} is not responsive.'.format(hostname))
             reset_session(runtime)
     elif selection == '2':
-        hosts_raw = []
-        hosts = []
+        hosts, hosts_raw = [], []
         if not path.exists('hosts.txt'):  # Look for hosts file. If it doesn't exist user must input hosts.
             num_hosts = int(input('Enter the number of hosts to test: '))  # How many hosts to add.
             for n in range(num_hosts):
-                number = n + 1
-                hostname = input('Enter the address/hostname of host #{}: '.format(number))
+                hostname = input('Enter the address/hostname of host #{}: '.format(n + 1))
                 with open('hosts.txt', 'a+') as file:  # Write user input to 'hosts.txt' file.
                     file.write(hostname)
                     file.write('\n')
         with open('hosts.txt', 'r') as file:  # Read from 'hosts.txt' file and append to list(hosts)
             for line in file.readlines():
                 hosts_raw.append(line.strip())
-                with Pool(len(hosts_raw)) as checker:
-                    checked = checker.map(host_check, hosts_raw)
+                with Pool(len(hosts_raw)) as checker:  # Create multiple threads to check hosts simultaneously.
+                    checked = checker.map(host_check, hosts_raw)  # Check all hosts in list(hosts_raw)
                     for i in list(checked):
-                        if i is not None:
+                        if i is not None:  # Add all responsive hosts to lst(hosts)
                             hosts.append(str(i))
         two(runtime, hosts)  # Perform two() test on all in list(hosts)
     elif selection == '3':
@@ -334,18 +331,17 @@ def main():
             hosts = []
             if not path.exists('hosts.txt'):  # Reads arguments if 'hosts.txt' file is not present.
                 hosts_raw = argv[3:]
-                with Pool(len(hosts_raw)) as checker:
-                    checked = checker.map(host_check, hosts_raw)
+                with Pool(len(hosts_raw)) as checker:  # Create multiple threads to check hosts simultaneously.
+                    checked = checker.map(host_check, hosts_raw)  # Check all hosts in list(hosts_raw)
                     for i in list(checked):
-                        if i is not None:
+                        if i is not None:  # Add all responsive hosts to lst(hosts)
                             hosts.append(str(i))
             elif path.exists('hosts.txt'):  # Reads hosts from 'hosts.txt' file, ignoring host arguments.
                 hosts_raw = []
                 with open('hosts.txt', 'r') as file:
                     for line in file.readlines():
                         hosts_raw.append(line.strip())
-                hosts = []
-                with Pool(len(hosts_raw)) as checker:
+                with Pool(len(hosts_raw)) as checker:  # Create multiple threads to check hosts simultaneously.
                     checked = checker.map(host_check, hosts_raw)
                     for i in list(checked):
                         if i is not None:
@@ -367,10 +363,11 @@ def main():
                 exit()
         elif test_run == '5':
             filename = argv[2]
-            if path.exists(filename):
+            # Check to see if file is present.
+            if path.exists(filename):  # If file is present, graph that file.
                 hostname = filename[:-4]
                 graph(hostname)
-            elif not path.exists(filename):
+            elif not path.exists(filename):  # If file is not present, print that then quit.
                 print('File not present.')
                 exit()
         else:  # If user entered invalid option, tell them that, then quit.
